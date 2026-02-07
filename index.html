@@ -208,7 +208,7 @@
         document.getElementById('preview-lore').innerHTML = loreHtml;
     }
 
-    // A lightweight MiniMessage & Legacy Parser
+// A lightweight MiniMessage & Legacy Parser
     function parseMiniMessage(text, isName) {
         if (!text) return isName ? "" : "<br>";
         
@@ -268,7 +268,7 @@
         return `<span class="mc-gray">${html}</span>`; // Default lore color is Purple/Gray
     }
 
-    // --- SAVE LOGIC (UNCHANGED) ---
+// --- SAVE LOGIC (UNCHANGED) ---
     async function saveItem() {
         const name = document.getElementById('itemName').value;
         const loreRaw = document.getElementById('itemLore').value;
