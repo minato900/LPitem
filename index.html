@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Item Editor</title>
+    <title>Item Editor - Live Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #1e1e2e;
@@ -11,35 +12,74 @@
             --text: #cdd6f4;
             --primary: #89b4fa;
             --green: #a6e3a1;
+            
+            /* Minecraft Tooltip Styles */
+            --mc-bg: rgba(16, 0, 16, 0.94);
+            --mc-border-start: #5000ff;
+            --mc-border-end: #28007f;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background-color: var(--bg);
             color: var(--text);
             display: flex;
             justify-content: center;
+            gap: 40px; /* Space between editor and preview */
             padding-top: 50px;
             margin: 0;
+            height: 100vh;
         }
         .container {
             background-color: var(--surface);
             padding: 30px;
             border-radius: 12px;
-            width: 500px;
+            width: 450px;
+            height: fit-content;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+
+        /* --- PREVIEW SECTION --- */
+        .preview-container {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+        
+        .mc-tooltip {
+            background-color: var(--mc-bg);
+            border: 2px solid;
+            border-image: linear-gradient(to bottom, var(--mc-border-start), var(--mc-border-end)) 1;
+            padding: 8px 10px;
+            min-width: 200px;
+            font-family: 'VT323', monospace;
+            font-size: 20px; /* Minecraft font is usually pixelated and large */
+            line-height: 1.2;
+            color: white; /* Default MC color */
+            text-shadow: 2px 2px 0px #3f3f3f; /* The classic MC text shadow */
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        /* --- EDITOR INPUTS --- */
         h2 { margin-top: 0; color: var(--primary); }
-        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
         
         input[type="text"], textarea {
             width: 100%;
             background-color: #181825;
             border: 1px solid #45475a;
             color: white;
-            padding: 10px;
+            padding: 12px;
             border-radius: 6px;
             box-sizing: border-box;
-            font-family: 'Courier New', monospace;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: 2px solid var(--primary);
+            border-color: transparent;
         }
         textarea { height: 150px; resize: vertical; }
 
@@ -54,9 +94,9 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 16px;
-            transition: background 0.2s;
+            transition: transform 0.1s;
         }
-        button:hover { background-color: #b4befe; }
+        button:active { transform: scale(0.98); }
         
         #command-output {
             margin-top: 20px;
@@ -67,29 +107,52 @@
             display: none;
             word-break: break-all;
             cursor: pointer;
+            font-size: 0.9em;
         }
-        .copy-hint { font-size: 0.8em; color: #6c7086; display: block; margin-top: 5px;}
+
+        /* --- PARSER STYLES --- */
+        .mc-red { color: #FF5555; }
+        .mc-blue { color: #5555FF; }
+        .mc-green { color: #55FF55; }
+        .mc-yellow { color: #FFFF55; }
+        .mc-gold { color: #FFAA00; }
+        .mc-light_purple { color: #FF55FF; }
+        .mc-aqua { color: #55FFFF; }
+        .mc-gray { color: #AAAAAA; }
+        .mc-dark_gray { color: #555555; }
+        .mc-bold { font-weight: bold; }
+        .mc-italic { font-style: italic; }
+        .mc-underlined { text-decoration: underline; }
+        .mc-strikethrough { text-decoration: line-through; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Minecraft Item Editor</h2>
+    <h2>Item Editor</h2>
     <div id="loading">Loading data...</div>
 
     <div id="editor" style="display:none;">
-        <label>Display Name (MiniMessage)</label>
-        <input type="text" id="itemName" placeholder="<red>Sword Name">
+        <label>Display Name</label>
+        <input type="text" id="itemName" placeholder="<red>Sword Name" oninput="updatePreview()">
 
-        <label>Lore (One line per row)</label>
-        <textarea id="itemLore" placeholder="<gray>Line 1&#10;<blue>Line 2"></textarea>
+        <label>Lore</label>
+        <textarea id="itemLore" placeholder="<gray>Line 1&#10;<blue>Line 2" oninput="updatePreview()"></textarea>
 
         <button onclick="saveItem()">Save & Get Command</button>
     </div>
 
     <div id="command-output" onclick="copyCommand()">
         <span id="cmd-text"></span>
-        <span class="copy-hint">(Click to copy)</span>
+        <span class="copy-hint" style="display:block; margin-top:5px; color:#6c7086; font-size:0.8em;">(Click to copy)</span>
+    </div>
+</div>
+
+<div class="preview-container">
+    <label style="color:var(--text); margin-bottom: 10px;">Live Preview</label>
+    <div class="mc-tooltip" id="preview-tooltip">
+        <div id="preview-name"></div>
+        <div id="preview-lore"></div>
     </div>
 </div>
 
@@ -97,54 +160,121 @@
     const BIN_URL = "https://bytebin.lucko.me/";
     let currentData = {};
 
-    // 1. Get ID from URL and Load Data
+    // --- INITIALIZATION ---
     window.onload = async function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
         if (!id) {
-            document.getElementById('loading').innerText = "No Item ID found in URL. Run /item editor in-game.";
+            // Demo Mode if no ID is present
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('editor').style.display = 'block';
+            document.getElementById('itemName').value = "<red><bold>Demonstration Sword";
+            document.getElementById('itemLore').value = "<gray>Damage: <red>+50<br><br><dark_gray><i>This is a preview item.";
+            updatePreview();
             return;
         }
 
         try {
             const response = await fetch(BIN_URL + id);
             if (!response.ok) throw new Error("Failed to fetch");
-            
             const json = await response.json();
             currentData = json.itemData || {};
             
-            // Populate fields
             document.getElementById('itemName').value = currentData.name || "";
-            
-            let loreText = "";
-            if (currentData.lore && Array.isArray(currentData.lore)) {
-                loreText = currentData.lore.join("\n");
-            }
-            document.getElementById('itemLore').value = loreText;
+            document.getElementById('itemLore').value = (currentData.lore || []).join("\n");
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('editor').style.display = 'block';
+            
+            updatePreview(); // Render immediately
 
         } catch (e) {
             document.getElementById('loading').innerText = "Error loading item data. Invalid ID?";
         }
     };
 
-    // 2. Save Data back to Bytebin
+    // --- LIVE PREVIEW LOGIC ---
+    function updatePreview() {
+        const nameRaw = document.getElementById('itemName').value;
+        const loreRaw = document.getElementById('itemLore').value;
+
+        // Render Name (Italic by default in MC for renamed items)
+        document.getElementById('preview-name').innerHTML = parseMiniMessage(nameRaw, true);
+        
+        // Render Lore
+        const loreLines = loreRaw.split('\n');
+        const loreHtml = loreLines.map(line => `<div>${parseMiniMessage(line, false)}</div>`).join('');
+        document.getElementById('preview-lore').innerHTML = loreHtml;
+    }
+
+    // A lightweight MiniMessage & Legacy Parser
+    function parseMiniMessage(text, isName) {
+        if (!text) return isName ? "" : "<br>";
+        
+        let html = text;
+
+        // 1. Basic Legacy Codes (&c, &l)
+        const legacyMap = {
+            '0': 'black', '1': 'dark_blue', '2': 'dark_green', '3': 'dark_aqua',
+            '4': 'dark_red', '5': 'dark_purple', '6': 'gold', '7': 'gray',
+            '8': 'dark_gray', '9': 'blue', 'a': 'green', 'b': 'aqua',
+            'c': 'red', 'd': 'light_purple', 'e': 'yellow', 'f': 'white'
+        };
+        
+        // Replace Legacy Color Codes
+        html = html.replace(/&([0-9a-f])/g, (match, code) => {
+            const color = legacyMap[code];
+            return `</span><span class="mc-${color}">`;
+        });
+        
+        // Replace Legacy Formats
+        html = html.replace(/&l/g, `</span><span class="mc-bold">`);
+        html = html.replace(/&o/g, `</span><span class="mc-italic">`);
+        html = html.replace(/&n/g, `</span><span class="mc-underlined">`);
+        html = html.replace(/&m/g, `</span><span class="mc-strikethrough">`);
+
+        // 2. MiniMessage Basic Tags
+        // Colors: <red>, <blue> -> <span class="mc-red">
+        const colors = ['red','blue','green','yellow','gold','aqua','gray','dark_gray','light_purple','dark_purple','dark_red','dark_blue','dark_green','dark_aqua','white','black'];
+        colors.forEach(c => {
+            const regex = new RegExp(`<${c}>`, 'g');
+            html = html.replace(regex, `<span class="mc-${c}">`);
+        });
+
+        // Hex Colors: <#123456>
+        html = html.replace(/<#([0-9a-fA-F]{6})>/g, '<span style="color:#$1">');
+
+        // Decorations
+        html = html.replace(/<bold>/g, '<span class="mc-bold">');
+        html = html.replace(/<b>/g, '<span class="mc-bold">');
+        html = html.replace(/<italic>/g, '<span class="mc-italic">');
+        html = html.replace(/<i>/g, '<span class="mc-italic">');
+        html = html.replace(/<underlined>/g, '<span class="mc-underlined">');
+        html = html.replace(/<u>/g, '<span class="mc-underlined">');
+        html = html.replace(/<strikethrough>/g, '<span class="mc-strikethrough">');
+        html = html.replace(/<st>/g, '<span class="mc-strikethrough">');
+        html = html.replace(/<reset>/g, '</span><span style="color:white; text-decoration:none; font-weight:normal; font-style:normal;">');
+
+        // Closing tags (Simple hack: just close span)
+        // Note: Real MiniMessage is a tree structure; this is a linear approximation
+        html = html.replace(/<\/[^>]+>/g, '</span>');
+
+        // Name is italic by default if changed, unless reset
+        if (isName) {
+            return `<span class="mc-italic mc-aqua">${html}</span>`; // Default name color is roughly Aqua/White+Italic
+        }
+        
+        return `<span class="mc-gray">${html}</span>`; // Default lore color is Purple/Gray
+    }
+
+    // --- SAVE LOGIC (UNCHANGED) ---
     async function saveItem() {
         const name = document.getElementById('itemName').value;
         const loreRaw = document.getElementById('itemLore').value;
         const loreArray = loreRaw.split('\n');
 
-        // Reconstruct JSON structure
-        const payload = {
-            itemData: {
-                name: name,
-                lore: loreArray
-            }
-        };
-
+        const payload = { itemData: { name: name, lore: loreArray } };
         const btn = document.querySelector('button');
         btn.innerText = "Saving...";
         btn.disabled = true;
@@ -155,30 +285,23 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-
             const result = await response.json();
-            const newId = result.key;
-
-            const cmd = `/item apply ${newId}`;
+            const cmd = `/item apply ${result.key}`;
             
-            const out = document.getElementById('command-output');
             document.getElementById('cmd-text').innerText = cmd;
-            out.style.display = 'block';
-            
+            document.getElementById('command-output').style.display = 'block';
             btn.innerText = "Save & Get Command";
             btn.disabled = false;
         } catch (e) {
             alert("Error saving data!");
-            btn.innerText = "Save & Get Command";
             btn.disabled = false;
         }
     }
-
-    // 3. Copy to Clipboard
+    
     function copyCommand() {
         const text = document.getElementById('cmd-text').innerText;
         navigator.clipboard.writeText(text);
-        alert("Command copied to clipboard!");
+        alert("Command copied!");
     }
 </script>
 
