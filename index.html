@@ -3,87 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Item Editor - Live Preview</title>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <title>Item Editor</title>
     <style>
-        @import url('https://fonts.cdnfonts.com/css/pixelcraft-2');
-
         :root {
             --bg: #1e1e2e;
             --surface: #313244;
             --text: #cdd6f4;
             --primary: #89b4fa;
             --green: #a6e3a1;
-            
-            /* Minecraft Tooltip Styles */
-            --mc-bg: rgba(16, 0, 16, 0.94);
-            --mc-border-start: #5000ff;
-            --mc-border-end: #28007f;
         }
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             display: flex;
             justify-content: center;
-            gap: 40px; /* Space between editor and preview */
             padding-top: 50px;
             margin: 0;
-            height: 100vh;
         }
         .container {
             background-color: var(--surface);
             padding: 30px;
             border-radius: 12px;
-            width: 450px;
-            height: fit-content;
+            width: 500px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-
-        /* --- PREVIEW SECTION --- */
-        .preview-container {
-            width: 350px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 50px;
-        }
-        
-        .mc-tooltip {
-            background-color: var(--mc-bg);
-            border: 4px solid #28007f; /* Thicker border for that "boxy" feel */
-            outline: 4px solid #5000ff;
-            outline-offset: -8px;
-            padding: 15px;
-            min-width: 260px;
-
-            /* Font Settings */
-            font-family: 'PixelCraft', sans-serif;
-            font-size: 20px; /* Standard Minecraft GUI scale size */
-            line-height: 1.2;
-            color: #AAAAAA; /* Default Gray Lore */
-            text-shadow: 2px 2px 0px #3f3f3f;
-            image-rendering: pixelated;
-        }
-
-        /* --- EDITOR INPUTS --- */
         h2 { margin-top: 0; color: var(--primary); }
-        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
         
         input[type="text"], textarea {
             width: 100%;
             background-color: #181825;
             border: 1px solid #45475a;
             color: white;
-            padding: 12px;
+            padding: 10px;
             border-radius: 6px;
             box-sizing: border-box;
-            font-family: 'Consolas', monospace;
-            font-size: 14px;
-        }
-        input[type="text"]:focus, textarea:focus {
-            outline: 2px solid var(--primary);
-            border-color: transparent;
+            font-family: 'Courier New', monospace;
         }
         textarea { height: 150px; resize: vertical; }
 
@@ -98,9 +54,9 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 16px;
-            transition: transform 0.1s;
+            transition: background 0.2s;
         }
-        button:active { transform: scale(0.98); }
+        button:hover { background-color: #b4befe; }
         
         #command-output {
             margin-top: 20px;
@@ -111,181 +67,85 @@
             display: none;
             word-break: break-all;
             cursor: pointer;
-            font-size: 0.9em;
         }
-
-        /* --- PARSER STYLES --- */
-        .mc-red { color: #FF5555; }
-        .mc-blue { color: #5555FF; }
-        .mc-green { color: #55FF55; }
-        .mc-yellow { color: #FFFF55; }
-        .mc-gold { color: #FFAA00; }
-        .mc-light_purple { color: #FF55FF; }
-        .mc-aqua { color: #55FFFF; }
-        .mc-gray { color: #AAAAAA; }
-        .mc-dark_gray { color: #555555; }
-        .mc-bold { font-weight: normal; letter-spacing: 1px; }
-        .mc-italic { font-style: italic; }
-        .mc-underlined { text-decoration: underline; }
-        .mc-strikethrough { text-decoration: line-through; }
-
-        #preview-name {
-        font-size: 22px; /* Names are slightly larger in the tooltip */
-        display: block;
-        margin-bottom: 8px;
-        }
+        .copy-hint { font-size: 0.8em; color: #6c7086; display: block; margin-top: 5px;}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Item Editor</h2>
+    <h2>Minecraft Item Editor</h2>
     <div id="loading">Loading data...</div>
 
     <div id="editor" style="display:none;">
-        <label>Display Name</label>
-        <input type="text" id="itemName" placeholder="<red>Sword Name" oninput="updatePreview()">
+        <label>Display Name (MiniMessage)</label>
+        <input type="text" id="itemName" placeholder="<red>Sword Name">
 
-        <label>Lore</label>
-        <textarea id="itemLore" placeholder="<gray>Line 1&#10;<blue>Line 2" oninput="updatePreview()"></textarea>
+        <label>Lore (One line per row)</label>
+        <textarea id="itemLore" placeholder="<gray>Line 1&#10;<blue>Line 2"></textarea>
 
         <button onclick="saveItem()">Save & Get Command</button>
     </div>
 
     <div id="command-output" onclick="copyCommand()">
         <span id="cmd-text"></span>
-        <span class="copy-hint" style="display:block; margin-top:5px; color:#6c7086; font-size:0.8em;">(Click to copy)</span>
+        <span class="copy-hint">(Click to copy)</span>
     </div>
 </div>
 
-<div class="preview-container">
-    <label style="color:var(--text); margin-bottom: 10px;">Live Preview</label>
-    <div class="mc-tooltip" id="preview-tooltip">
-        <div id="preview-name"></div>
-        <div id="preview-lore"></div>
-    </div>
-</div>
 
 <script>
     const BIN_URL = "https://bytebin.lucko.me/";
     let currentData = {};
 
-    // --- INITIALIZATION ---
+    // 1. Get ID from URL and Load Data
     window.onload = async function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
         if (!id) {
-            // Demo Mode if no ID is present
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('editor').style.display = 'block';
-            document.getElementById('itemName').value = "<red><bold>Demonstration Sword";
-            document.getElementById('itemLore').value = "<gray>Damage: <red>+50<br><br><dark_gray><i>This is a preview item.";
-            updatePreview();
+            document.getElementById('loading').innerText = "No Item ID found in URL. Run /item editor in-game.";
             return;
         }
 
         try {
             const response = await fetch(BIN_URL + id);
             if (!response.ok) throw new Error("Failed to fetch");
+            
             const json = await response.json();
             currentData = json.itemData || {};
             
+            // Populate fields
             document.getElementById('itemName').value = currentData.name || "";
-            document.getElementById('itemLore').value = (currentData.lore || []).join("\n");
+            
+            let loreText = "";
+            if (currentData.lore && Array.isArray(currentData.lore)) {
+                loreText = currentData.lore.join("\n");
+            }
+            document.getElementById('itemLore').value = loreText;
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('editor').style.display = 'block';
-            
-            updatePreview(); // Render immediately
 
         } catch (e) {
             document.getElementById('loading').innerText = "Error loading item data. Invalid ID?";
         }
     };
 
-    // --- LIVE PREVIEW LOGIC ---
-    function updatePreview() {
-        const nameRaw = document.getElementById('itemName').value;
-        const loreRaw = document.getElementById('itemLore').value;
-
-        // Render Name (Italic by default in MC for renamed items)
-        document.getElementById('preview-name').innerHTML = parseMiniMessage(nameRaw, true);
-        
-        // Render Lore
-        const loreLines = loreRaw.split('\n');
-        const loreHtml = loreLines.map(line => `<div>${parseMiniMessage(line, false)}</div>`).join('');
-        document.getElementById('preview-lore').innerHTML = loreHtml;
-    }
-
-// A lightweight MiniMessage & Legacy Parser
-    function parseMiniMessage(text, isName) {
-        if (!text) return isName ? "" : "<br>";
-        
-        let html = text;
-
-        // 1. Basic Legacy Codes (&c, &l)
-        const legacyMap = {
-            '0': 'black', '1': 'dark_blue', '2': 'dark_green', '3': 'dark_aqua',
-            '4': 'dark_red', '5': 'dark_purple', '6': 'gold', '7': 'gray',
-            '8': 'dark_gray', '9': 'blue', 'a': 'green', 'b': 'aqua',
-            'c': 'red', 'd': 'light_purple', 'e': 'yellow', 'f': 'white'
-        };
-        
-        // Replace Legacy Color Codes
-        html = html.replace(/&([0-9a-f])/g, (match, code) => {
-            const color = legacyMap[code];
-            return `</span><span class="mc-${color}">`;
-        });
-        
-        // Replace Legacy Formats
-        html = html.replace(/&l/g, `</span><span class="mc-bold">`);
-        html = html.replace(/&o/g, `</span><span class="mc-italic">`);
-        html = html.replace(/&n/g, `</span><span class="mc-underlined">`);
-        html = html.replace(/&m/g, `</span><span class="mc-strikethrough">`);
-        html = html.replace(/<(reset|r)>/g, '</span><span style="color:#AAAAAA; font-weight:normal; font-style:normal; text-decoration:none;">');
-
-        // 2. MiniMessage Basic Tags
-        // Colors: <red>, <blue> -> <span class="mc-red">
-        const colors = ['red','blue','green','yellow','gold','aqua','gray','dark_gray','light_purple','dark_purple','dark_red','dark_blue','dark_green','dark_aqua','white','black'];
-        colors.forEach(c => {
-            const regex = new RegExp(`<${c}>`, 'g');
-            html = html.replace(regex, `<span class="mc-${c}">`);
-        });
-
-        // Hex Colors: <#123456>
-        html = html.replace(/<#([0-9a-fA-F]{6})>/g, '<span style="color:#$1">');
-
-        // Decorations
-        html = html.replace(/<bold>/g, '<span class="mc-bold">');
-        html = html.replace(/<b>/g, '<span class="mc-bold">');
-        html = html.replace(/<italic>/g, '<span class="mc-italic">');
-        html = html.replace(/<i>/g, '<span class="mc-italic">');
-        html = html.replace(/<underlined>/g, '<span class="mc-underlined">');
-        html = html.replace(/<u>/g, '<span class="mc-underlined">');
-        html = html.replace(/<strikethrough>/g, '<span class="mc-strikethrough">');
-        html = html.replace(/<st>/g, '<span class="mc-strikethrough">');
-        html = html.replace(/<reset>/g, '</span><span style="color:white; text-decoration:none; font-weight:normal; font-style:normal;">');
-
-        // Closing tags (Simple hack: just close span)
-        // Note: Real MiniMessage is a tree structure; this is a linear approximation
-        html = html.replace(/<\/[^>]+>/g, '</span>');
-
-        // Name is italic by default if changed, unless reset
-        if (isName) {
-            return `<span class="mc-italic mc-aqua">${html}</span>`; // Default name color is roughly Aqua/White+Italic
-        }
-        
-        return `<span class="mc-gray">${html}</span>`; // Default lore color is Purple/Gray
-    }
-
-// --- SAVE LOGIC (UNCHANGED) ---
+    // 2. Save Data back to Bytebin
     async function saveItem() {
         const name = document.getElementById('itemName').value;
         const loreRaw = document.getElementById('itemLore').value;
         const loreArray = loreRaw.split('\n');
 
-        const payload = { itemData: { name: name, lore: loreArray } };
+        // Reconstruct JSON structure
+        const payload = {
+            itemData: {
+                name: name,
+                lore: loreArray
+            }
+        };
+
         const btn = document.querySelector('button');
         btn.innerText = "Saving...";
         btn.disabled = true;
@@ -296,25 +156,89 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
+
             const result = await response.json();
-            const cmd = `/item apply ${result.key}`;
+            const newId = result.key;
+
+            const cmd = `/item apply ${newId}`;
             
+            const out = document.getElementById('command-output');
             document.getElementById('cmd-text').innerText = cmd;
-            document.getElementById('command-output').style.display = 'block';
+            out.style.display = 'block';
+            
             btn.innerText = "Save & Get Command";
             btn.disabled = false;
         } catch (e) {
             alert("Error saving data!");
+            btn.innerText = "Save & Get Command";
             btn.disabled = false;
         }
     }
-    
+
+    // 3. Copy to Clipboard
     function copyCommand() {
         const text = document.getElementById('cmd-text').innerText;
         navigator.clipboard.writeText(text);
-        alert("Command copied!");
+        alert("Command copied to clipboard!");
+    }
+
+    const ATTRIBUTE_TYPES = [
+        "generic.attack_damage", "generic.attack_speed", "generic.movement_speed", 
+        "generic.max_health", "generic.armor", "generic.luck", "player.block_break_speed"
+    ];
+
+    const OPERATIONS = ["ADD_NUMBER", "ADD_SCALAR", "MULTIPLY_SCALAR_1"];
+    const SLOTS = ["ANY", "HAND", "OFF_HAND", "FEET", "LEGS", "CHEST", "HEAD"];
+
+    function addAttribute(existingData = null) {
+        const container = document.getElementById('attribute-list');
+        const div = document.createElement('div');
+        div.className = "attr-row";
+        div.style = "display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; background: #181825; padding: 10px; border-radius: 5px;";
+
+        div.innerHTML = `
+            <select class="attr-type">${ATTRIBUTE_TYPES.map(t => `<option value="${t}" ${existingData?.attribute === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+            <input type="number" class="attr-amount" value="${existingData?.amount || 1.0}" step="0.1" style="width: 60px;">
+            <select class="attr-op">${OPERATIONS.map(o => `<option value="${o}" ${existingData?.operation === o ? 'selected' : ''}>${o}</option>`).join('')}</select>
+            <select class="attr-slot">${SLOTS.map(s => `<option value="${s}" ${existingData?.slot === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+            <button onclick="this.parentElement.remove()" style="width: 30px; background: #f38ba8; margin: 0;">X</button>
+        `;
+        container.appendChild(div);
+    }
+
+    // Update your saveItem() function to collect these:
+    function getAttributesFromUI() {
+        const attrs = {};
+        document.querySelectorAll('.attr-row').forEach(row => {
+            const type = row.querySelector('.attr-type').value;
+            attrs[type] = {
+                attribute: type,
+                amount: parseFloat(row.querySelector('.attr-amount').value),
+                operation: row.querySelector('.attr-op').value,
+                slot: row.querySelector('.attr-slot').value
+            };
+        });
+        return attrs;
+    }
+
+    function renderAttributesPreview(attributes) {
+    let html = "";
+    Object.values(attributes).forEach(attr => {
+        const isNegative = attr.amount < 0;
+        const colorClass = isNegative ? "mc-red" : "mc-blue";
+        const sign = attr.amount > 0 ? "+" : "";
+        
+        // Simplified display name for the preview
+        const name = attr.attribute.split('.').pop().replace('_', ' ');
+        html += `<div class="${colorClass}">${sign}${attr.amount} ${name}</div>`;
+    });
+    return html;
     }
 </script>
+
+<label>Attributes</label>
+<div id="attribute-list"></div>
+<button type="button" onclick="addAttribute()" style="background: #45475a; margin-top: 5px;">+ Add Attribute</button>
 
 </body>
 </html>
