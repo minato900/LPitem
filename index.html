@@ -185,6 +185,13 @@
 
         <button class="btn-save" onclick="saveItem()">Save & Get Command</button>
         
+        <button class="tab-btn" onclick="switchTab('enchantments')">Enchantments</button>
+
+        <div id="tab-enchantments" class="tab-content">
+            <div id="enchant-list"></div>
+            <button type="button" class="btn-add" onclick="addEnchant()">+ Add Enchantment</button>
+        </div>
+
         <div id="command-output" onclick="copyCommand()">
             <span id="cmd-text"></span>
             <div style="font-size:0.8rem; color:var(--subtext); margin-top:5px;">(Click to copy)</div>
@@ -231,6 +238,40 @@
             document.getElementById('loading-overlay').innerText = "Error: Invalid ID or Data Expired.";
         }
     };
+
+    const ENCHANTS = ["sharpness", "protection", "unbreaking", "efficiency", "fire_aspect", "looting", "fortune", "mending", "knockback", "power", "infinity"];
+
+    window.addEnchant = function(key = "sharpness", level = 1) {
+        const container = document.getElementById('enchant-list');
+        const div = document.createElement('div');
+        div.className = "attr-row";
+        
+        // We use the 'key' and 'level' passed in (either from autofill or defaults)
+        div.innerHTML = `
+            <select class="ench-type" onchange="updatePreview()">
+                ${ENCHANTS.map(e => `
+                    <option value="${e}" ${key === e ? 'selected' : ''}>
+                        ${e.replace('_', ' ').toUpperCase()}
+                    </option>
+                `).join('')}
+            </select>
+            <input type="number" class="ench-level" value="${level}" min="0" max="255" oninput="updatePreview()">
+            <button class="btn-remove" onclick="this.parentElement.remove(); updatePreview()">X</button>
+        `;
+        container.appendChild(div);
+        updatePreview();
+    }
+
+    // Update your getAttributes (or create getEnchants) to collect data
+    function getEnchants() {
+        const enchants = {};
+        document.querySelectorAll('#enchant-list .attr-row').forEach(row => {
+            const type = row.querySelector('.ench-type').value;
+            const level = parseInt(row.querySelector('.ench-level').value);
+            enchants[type] = level;
+        });
+        return enchants;
+    }
 
     function setupEditor(data) {
         document.getElementById('loading-overlay').style.display = 'none';
@@ -331,6 +372,29 @@
             attrHtml += `<div class="${colorClass}">${sign}${attr.amount} ${name}${slotText}</div>`;
         });
         document.getElementById('preview-attributes').innerHTML = attrHtml;
+
+        function romanize(num) {
+            if (num > 10) return num; // Minecraft stops numerals at 10 usually
+            const lookup = {X:10,IX:9,V:5,IV:4,I:1};
+            let roman = '';
+            for (let i in lookup) {
+                while (num >= lookup[i]) {
+                    roman += i;
+                    num -= lookup[i];
+                }
+            }
+            return roman;
+        }
+
+        // Inside updatePreview():
+        const enchants = getEnchants();
+        let enchHtml = "";
+        Object.keys(enchants).forEach(key => {
+            const name = key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ');
+            const level = enchants[key];
+            enchHtml += `<div class="mc-gray">${name} ${romanize(level)}</div>`;
+        });
+        document.getElementById('preview-lore').insertAdjacentHTML('afterbegin', enchHtml);
     }
 
     function parseMiniMessage(text, isName) {
