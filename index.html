@@ -168,6 +168,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('general')">General</button>
             <button class="tab-btn" onclick="switchTab('attributes')">Attributes</button>
+            <button class="tab-btn" onclick="switchTab('enchantments')">Enchantments</button>
         </div>
 
         <div id="tab-general" class="tab-content active">
@@ -183,15 +184,13 @@
             <button type="button" class="btn-add" onclick="addAttribute()">+ Add Attribute</button>
         </div>
 
-        <button class="btn-save" onclick="saveItem()">Save & Get Command</button>
-        
-        <button class="tab-btn" onclick="switchTab('enchantments')">Enchantments</button>
-
         <div id="tab-enchantments" class="tab-content">
             <div id="enchant-list"></div>
             <button type="button" class="btn-add" onclick="addEnchant()">+ Add Enchantment</button>
         </div>
 
+        <button class="btn-save" onclick="saveItem()">Save & Get Command</button>
+    
         <div id="command-output" onclick="copyCommand()">
             <span id="cmd-text"></span>
             <div style="font-size:0.8rem; color:var(--subtext); margin-top:5px;">(Click to copy)</div>
@@ -245,7 +244,7 @@
         const container = document.getElementById('enchant-list');
         const div = document.createElement('div');
         div.className = "attr-row";
-        
+
         // We use the 'key' and 'level' passed in (either from autofill or defaults)
         div.innerHTML = `
             <select class="ench-type" onchange="updatePreview()">
